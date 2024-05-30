@@ -6,12 +6,11 @@
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.VBox?>
 
-<BorderPane xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/21" fx:controller="org.example.greencredit_program.HelloController">
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.example.greencredit_program.HelloController">
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #283e4a; -fx-padding: 10;">
+        <HBox alignment="CENTER_LEFT" spacing="10" style="-fx-background-color: #466D1D; -fx-padding: 10;">
             <Label style="-fx-font-size: 24; -fx-text-fill: white;" text="GCP      " />
             <TextField promptText="Search" style="-fx-background-color: white; -fx-background-radius: 15;" />
             <Button style="-fx-background-color: transparent; -fx-text-fill: white;" text="Home" />
