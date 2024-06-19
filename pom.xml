@@ -134,7 +134,7 @@
                         <id>default-cli</id>
                         <configuration>
                             <mainClass>
-                                org.example.greencredit_program/org.example.greencredit_program.HelloApplication
+                                org.example.greencredit_program/org.example.greencredit_program.greenCreditProgram
                             </mainClass>
                             <launcher>app</launcher>
                             <jlinkZipName>app</jlinkZipName>
