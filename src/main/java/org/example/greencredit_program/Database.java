@@ -7,11 +7,16 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 public class Database {
-    private static final String URL = "jdbc:mysql://localhost:3306/green_credit_db";
+    private static final String URL = "jdbc:mysql://127.0.0.1:3306/green_credit_db";
     private static final String USER = "root"; // Change to your database user
     private static final String PASSWORD = "Dimpu@2004"; // Change to your database password
 
     static {
+        try {
+            Class.forName("com.mysql.cj.jdbc.Driver");
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
+        }
         // Set trust store properties
         System.setProperty("javax.net.ssl.trustStore", "/path/to/truststore.jks");
         System.setProperty("javax.net.ssl.trustStorePassword", "Dimpu@2004");

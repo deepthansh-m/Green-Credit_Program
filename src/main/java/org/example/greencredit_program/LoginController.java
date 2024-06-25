@@ -63,7 +63,7 @@ public class LoginController {
     private void loadMainView(boolean isCompany) {
         try {
             Stage stage = (Stage) usernameField.getScene().getWindow();
-            FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("hello-view.fxml"));
+            FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("main-view.fxml"));
             Scene scene = new Scene(fxmlLoader.load(), 1320, 1240);
             GreenController controller = fxmlLoader.getController();
             controller.setIsCompany(isCompany);
