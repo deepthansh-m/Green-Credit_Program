@@ -67,6 +67,7 @@ public class LoginController {
             Scene scene = new Scene(fxmlLoader.load(), 1320, 1240);
             GreenController controller = fxmlLoader.getController();
             controller.setIsCompany(isCompany);
+            controller.setUsername(usernameField.getText());
             stage.setScene(scene);
         } catch (IOException e) {
             e.printStackTrace();
