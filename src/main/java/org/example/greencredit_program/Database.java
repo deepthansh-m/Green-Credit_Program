@@ -28,6 +28,146 @@ public class Database {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
+    public static boolean requestCredits(int userId, int creditAmount, String username, int amount) {
+        String companyName = getCompanyNameForUser(userId);
+
+        if (companyName == null || companyName.trim().isEmpty()) {
+            throw new IllegalStateException("User is not associated with a company");
+        }
+        String sql = "INSERT INTO credit_requests (company_name, credit_amount /* other fields */) VALUES (?, ? /* other placeholders */)";
+        try (PreparedStatement pstmt = connect().prepareStatement(sql)) {
+            pstmt.setString(1, companyName);
+            pstmt.setInt(2, creditAmount);
+            pstmt.setInt(3, amount);
+            pstmt.executeUpdate();
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+    private String getCompanyNameForUser(int userId) throws SQLException {
+        String sql = "SELECT company_name FROM users WHERE user_id = ?";
+        try (PreparedStatement pstmt = connect().prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("company_name");
+                }
+            }
+        }
+        return null;
+    }
+
+    public static List<CreditRequest> getPendingCreditRequests(String username) {
+        List<CreditRequest> requests = new ArrayList<>();
+        String query = "SELECT * FROM credit_requests WHERE username = ? AND status = 'PENDING'";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                requests.add(new CreditRequest(
+                        rs.getInt("id"),
+                        rs.getString("company_name"),
+                        rs.getInt("amount")
+                ));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return requests;
+    }
+
+
+    public static boolean approveCreditRequest(int requestId, String username) {
+        Connection conn = null;
+        try {
+            conn = connect();
+            conn.setAutoCommit(false);
+
+            // Get request details
+            String getRequestQuery = "SELECT company_name, amount FROM credit_requests WHERE id = ? AND username = ? AND status = 'PENDING'";
+            int amount;
+            String companyName;
+            try (PreparedStatement pstmt = conn.prepareStatement(getRequestQuery)) {
+                pstmt.setInt(1, requestId);
+                pstmt.setString(2, username);
+                ResultSet rs = pstmt.executeQuery();
+                if (!rs.next()) {
+                    throw new SQLException("Invalid request");
+                }
+                companyName = rs.getString("company_name");
+                amount = rs.getInt("amount");
+            }
+
+            // Update user's credits
+            String updateUserQuery = "UPDATE users SET credits = credits - ? WHERE username = ? AND credits >= ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(updateUserQuery)) {
+                pstmt.setInt(1, amount);
+                pstmt.setString(2, username);
+                pstmt.setInt(3, amount);
+                int updatedRows = pstmt.executeUpdate();
+                if (updatedRows == 0) {
+                    throw new SQLException("Insufficient credits");
+                }
+            }
+
+            // Update company's credits
+            String updateCompanyQuery = "UPDATE companies SET credits = credits + ? WHERE username = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(updateCompanyQuery)) {
+                pstmt.setInt(1, amount);
+                pstmt.setString(2, companyName);
+                pstmt.executeUpdate();
+            }
+
+            // Update request status
+            String updateRequestQuery = "UPDATE credit_requests SET status = 'APPROVED' WHERE id = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(updateRequestQuery)) {
+                pstmt.setInt(1, requestId);
+                pstmt.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            return false;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    public static List<String> searchUsers(String searchTerm) {
+        List<String> users = new ArrayList<>();
+        String query = "SELECT username FROM users WHERE username LIKE ?";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, "%" + searchTerm + "%");
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                users.add(rs.getString("username"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return users;
+    }
+
     public static boolean validateLogin(String username, String password, boolean isCompany) {
         String table = isCompany ? "companies" : "users";
         String query = "SELECT * FROM " + table + " WHERE username = ? AND password = ?";
@@ -106,5 +246,167 @@ public class Database {
             e.printStackTrace();
         }
         return posts;
+    }
+    public static boolean performTransaction(String sender, String recipient, double amount, boolean isCompanySender) {
+        String senderTable = isCompanySender ? "companies" : "users";
+        String recipientTable = isCompanySender ? "users" : "companies";
+
+        Connection conn = null;
+        try {
+            conn = connect();
+            conn.setAutoCommit(false);
+
+            // Check sender's balance
+            String checkBalanceQuery = "SELECT credits FROM " + senderTable + " WHERE username = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(checkBalanceQuery)) {
+                pstmt.setString(1, sender);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    double balance = rs.getDouble("credits");
+                    if (balance < amount) {
+                        throw new SQLException("Insufficient credits");
+                    }
+                } else {
+                    throw new SQLException("Sender not found");
+                }
+            }
+
+            // Update sender's balance
+            String updateSenderQuery = "UPDATE " + senderTable + " SET credits = credits - ? WHERE username = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(updateSenderQuery)) {
+                pstmt.setDouble(1, amount);
+                pstmt.setString(2, sender);
+                pstmt.executeUpdate();
+            }
+
+            // Update recipient's balance
+            String updateRecipientQuery = "UPDATE " + recipientTable + " SET credits = credits + ? WHERE username = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(updateRecipientQuery)) {
+                pstmt.setDouble(1, amount);
+                pstmt.setString(2, recipient);
+                pstmt.executeUpdate();
+            }
+
+            // Record the transaction
+            String recordTransactionQuery = "INSERT INTO transactions (sender, recipient, amount, transaction_date) VALUES (?, ?, ?, NOW())";
+            try (PreparedStatement pstmt = conn.prepareStatement(recordTransactionQuery)) {
+                pstmt.setString(1, sender);
+                pstmt.setString(2, recipient);
+                pstmt.setDouble(3, amount);
+                pstmt.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            return false;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    public static List<String> getTransactionHistory(String username, boolean isCompany) {
+        List<String> history = new ArrayList<>();
+        String query = "SELECT * FROM transactions WHERE sender = ? OR recipient = ? ORDER BY transaction_date DESC LIMIT 10";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, username);
+            pstmt.setString(2, username);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                String sender = rs.getString("sender");
+                String recipient = rs.getString("recipient");
+                double amount = rs.getDouble("amount");
+                Timestamp date = rs.getTimestamp("transaction_date");
+                String transactionStr = String.format("%s: %s %s %.2f credits to %s",
+                        date.toString(),
+                        sender.equals(username) ? "Sent" : "Received",
+                        sender.equals(username) ? "-" : "+",
+                        amount,
+                        sender.equals(username) ? recipient : sender);
+                history.add(transactionStr);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return history;
+    }
+    public static boolean saveFileInfoAndAwardCredits(String username, String fileName, byte[] fileData, boolean isCompany) {
+        String table = isCompany ? "company_posts" : "user_posts";
+        String query = "INSERT INTO " + table + " (username, file_name, file_data) VALUES (?, ?, ?)";
+        String updateCreditsQuery = "UPDATE " + (isCompany ? "companies" : "users") + " SET credits = credits + ? WHERE username = ?";
+
+        Connection conn = null;
+        try {
+            conn = connect();
+            conn.setAutoCommit(false);
+
+            // Save file info
+            try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                pstmt.setString(1, username);
+                pstmt.setString(2, fileName);
+                pstmt.setBytes(3, fileData);
+                pstmt.executeUpdate();
+            }
+
+            // Award credits
+            int creditsToAward = 10; // You can adjust this value
+            try (PreparedStatement pstmt = conn.prepareStatement(updateCreditsQuery)) {
+                pstmt.setInt(1, creditsToAward);
+                pstmt.setString(2, username);
+                pstmt.executeUpdate();
+            }
+
+            conn.commit();
+            return true;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            return false;
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.close();
+                } catch (SQLException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    public static int getUserCredits(String username, boolean isCompany) {
+        String table = isCompany ? "companies" : "users";
+        String query = "SELECT credits FROM " + table + " WHERE username = ?";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(query)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("credits");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
     }
 }

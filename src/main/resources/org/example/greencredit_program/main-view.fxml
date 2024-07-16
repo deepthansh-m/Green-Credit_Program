@@ -11,9 +11,10 @@
 
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx/fxml/1" fx:controller="org.example.greencredit_program.GreenController">
     <top>
-        <HBox alignment="CENTER_LEFT" spacing="20" style="-fx-background-color: #466D1D; -fx-padding: 15;">
+    <HBox alignment="CENTER_LEFT" spacing="20" style="-fx-background-color: #466D1D; -fx-padding: 15;">
             <Label style="-fx-font-size: 28; -fx-text-fill: white;" text="GCP" />
             <TextField fx:id="searchField" promptText="Search" style="-fx-background-color: white; -fx-background-radius: 15; -fx-pref-width: 250;" />
+            <Label fx:id="creditBalanceLabel" style="-fx-font-size: 14; -fx-text-fill: white;" text="Credits: 0" />
             <Button style="-fx-background-color: transparent; -fx-text-fill: white;" text="Home" />
             <Button style="-fx-background-color: transparent; -fx-text-fill: white;" text="My Green Credits" />
             <Button style="-fx-background-color: transparent; -fx-text-fill: white;" text="Company's" />
@@ -31,9 +32,25 @@
                 <Label style="-fx-font-size: 18;" text="User Name" />
                 <Label style="-fx-font-size: 14; -fx-text-fill: grey;" text="Headline" />
             </VBox>
-            <Button alignment="TOP_LEFT" mnemonicParsing="false" prefWidth="150.0" style="-fx-background-color: transparent; -fx-font-size: 18;" text="Transaction" />
+            <VBox fx:id="creditRequestsBox" spacing="10">
+                <Label text="Pending Credit Requests:" />
+                <ListView fx:id="creditRequestsListView" />
+                <Button text="Approve Selected Request" onAction="#approveCreditRequest" />
+            </VBox>
+            <Button alignment="TOP_LEFT" mnemonicParsing="false" prefWidth="150.0" style="-fx-background-color: transparent; -fx-font-size: 18;" text="Transactions" onAction="#showTransactionsView"/>
             <Label style="-fx-font-size: 18;" text="Connections" />
             <ListView fx:id="connectionsListView" prefHeight="250" />
+            <VBox spacing="10">
+                <HBox spacing="10">
+                    <TextField fx:id="searchField2" promptText="Search users" />
+                    <Button text="Search" onAction="#searchUsers" />
+                </HBox>
+                <ListView fx:id="searchResultsListView" />
+                <HBox spacing="10">
+                    <TextField fx:id="creditAmountField" promptText="Credit amount" />
+                    <Button text="Request Credits" onAction="#requestCredits" />
+                </HBox>
+            </VBox>
         </VBox>
     </left>
 
