@@ -148,14 +148,18 @@ public class GreenController {
     private Label moneyAmountLabel;
 
     private static final double DOLLARS_PER_CREDIT = 20.0;
+    int j = 1;
 
     @FXML
     void initialize() {
-        Timeline timeline = new Timeline(
-                new KeyFrame(Duration.seconds(2), event -> updateDynamicLabel())
-        );
-        timeline.setCycleCount(Timeline.INDEFINITE);
-        timeline.play();
+        if (j==1) {
+            Timeline timeline = new Timeline(
+                    new KeyFrame(Duration.seconds(2), event -> updateDynamicLabel())
+            );
+            timeline.setCycleCount(Timeline.INDEFINITE);
+            timeline.play();
+        }
+        j++;
 
         // Initialize drag-and-drop
         dragAndDropArea.setOnDragOver(event -> {
@@ -183,15 +187,10 @@ public class GreenController {
         if (!isCompany) {
             loadCreditRequests();
         }
-        updateAccountBalanceDisplay();
-        addMoneyButton.setOnAction(event -> addMoneyToAccount());
+
         accountBalance = Database.getAccountBalance(username);
         updateAccountBalanceDisplay();
         addMoneyButton.setOnAction(event -> addMoneyToAccount());
-    }
-
-    private void updateAccountBalanceDisplay() {
-        accountBalanceLabel.setText(String.format("Account Balance: $%.2f", accountBalance));
     }
 
     @FXML
@@ -273,7 +272,7 @@ public class GreenController {
         if (isVisible) {
             leftMenu.setPrefWidth(0);
         } else {
-            leftMenu.setPrefWidth(350);
+            leftMenu.setPrefWidth(400);
         }
     }
 
@@ -368,6 +367,11 @@ public class GreenController {
     private void updateCreditBalanceDisplay() {
         int credits = Database.getUserCredits(username, isCompany);
         creditBalanceLabel.setText("Credits: " + credits);
+    }
+
+    private void updateAccountBalanceDisplay() {
+        accountBalance = Database.getAccountBalance(username); // Fetch the latest balance
+        accountBalanceLabel.setText(String.format("Account Balance: $%.2f", accountBalance));
     }
 
     @FXML
@@ -476,8 +480,9 @@ public class GreenController {
             boolean success = Database.approveCreditRequest(selectedRequest.getId(), username);
             if (success) {
                 showAlert("Request Approved", "You've transferred " + selectedRequest.getAmount() + " credits to " + selectedRequest.getCompanyName());
-                updateCreditBalanceDisplay();
-                loadCreditRequests();
+                updateCreditBalanceDisplay(); // Update the credit balance display
+                updateAccountBalanceDisplay(); // Update the account balance display
+                loadCreditRequests(); // Refresh the credit requests list
             } else {
                 showAlert("Approval Failed", "There was an error approving the request. Please try again.");
             }

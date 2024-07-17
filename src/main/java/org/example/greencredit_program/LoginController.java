@@ -65,7 +65,7 @@ public class LoginController {
         try {
             Stage stage = (Stage) usernameField.getScene().getWindow();
             FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("main-view.fxml"));
-            Scene scene = new Scene(fxmlLoader.load(), 1300, 1250);
+            Scene scene = new Scene(fxmlLoader.load(), 1350, 1250);
             GreenController controller = fxmlLoader.getController();
             controller.setIsCompany(isCompany);
             controller.setUsername(usernameField.getText());

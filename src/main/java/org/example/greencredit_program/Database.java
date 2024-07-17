@@ -73,8 +73,9 @@ public class Database {
             conn.setAutoCommit(false);
 
             // Get request details
-            String getRequestQuery = "SELECT requester_name, amount FROM credit_requests WHERE id = ? AND recipient_username = ? AND status = 'PENDING'";
-            int amount;
+            String getRequestQuery = "SELECT requester_name, amount, money_amount FROM credit_requests WHERE id = ? AND recipient_username = ? AND status = 'PENDING'";
+            int creditAmount;
+            double moneyAmount;
             String requesterName;
             try (PreparedStatement pstmt = conn.prepareStatement(getRequestQuery)) {
                 pstmt.setInt(1, requestId);
@@ -84,18 +85,20 @@ public class Database {
                     throw new SQLException("Invalid request");
                 }
                 requesterName = rs.getString("requester_name");
-                amount = rs.getInt("amount");
+                creditAmount = rs.getInt("amount");
+                moneyAmount = rs.getDouble("money_amount");
             }
 
-            // Update recipient's credits (check both users and companies tables)
-            String updateRecipientQuery = "UPDATE users SET credits = credits - ? WHERE username = ? AND credits >= ?";
-            String updateRecipientCompanyQuery = "UPDATE companies SET credits = credits - ? WHERE username = ? AND credits >= ?";
+            // Update recipient's credits and account balance
+            String updateRecipientQuery = "UPDATE users SET credits = credits - ?, account_balance = account_balance + ? WHERE username = ? AND credits >= ?";
+            String updateRecipientCompanyQuery = "UPDATE companies SET credits = credits - ?, account_balance = account_balance + ? WHERE username = ? AND credits >= ?";
             boolean recipientUpdated = false;
             for (String query : new String[]{updateRecipientQuery, updateRecipientCompanyQuery}) {
                 try (PreparedStatement pstmt = conn.prepareStatement(query)) {
-                    pstmt.setInt(1, amount);
-                    pstmt.setString(2, username);
-                    pstmt.setInt(3, amount);
+                    pstmt.setInt(1, creditAmount);
+                    pstmt.setDouble(2, moneyAmount);
+                    pstmt.setString(3, username);
+                    pstmt.setInt(4, creditAmount);
                     int updatedRows = pstmt.executeUpdate();
                     if (updatedRows > 0) {
                         recipientUpdated = true;
@@ -107,14 +110,15 @@ public class Database {
                 throw new SQLException("Insufficient credits or recipient not found");
             }
 
-            // Update requester's credits (check both users and companies tables)
-            String updateRequesterQuery = "UPDATE users SET credits = credits + ? WHERE username = ?";
-            String updateRequesterCompanyQuery = "UPDATE companies SET credits = credits + ? WHERE username = ?";
+            // Update requester's credits and account balance
+            String updateRequesterQuery = "UPDATE users SET credits = credits + ?, account_balance = account_balance - ? WHERE username = ?";
+            String updateRequesterCompanyQuery = "UPDATE companies SET credits = credits + ?, account_balance = account_balance - ? WHERE username = ?";
             boolean requesterUpdated = false;
             for (String query : new String[]{updateRequesterQuery, updateRequesterCompanyQuery}) {
                 try (PreparedStatement pstmt = conn.prepareStatement(query)) {
-                    pstmt.setInt(1, amount);
-                    pstmt.setString(2, requesterName);
+                    pstmt.setInt(1, creditAmount);
+                    pstmt.setDouble(2, moneyAmount);
+                    pstmt.setString(3, requesterName);
                     int updatedRows = pstmt.executeUpdate();
                     if (updatedRows > 0) {
                         requesterUpdated = true;
@@ -130,6 +134,22 @@ public class Database {
             String updateRequestQuery = "UPDATE credit_requests SET status = 'APPROVED' WHERE id = ?";
             try (PreparedStatement pstmt = conn.prepareStatement(updateRequestQuery)) {
                 pstmt.setInt(1, requestId);
+                pstmt.executeUpdate();
+            }
+
+            // Record the transactions
+            String recordTransactionQuery = "INSERT INTO transactions (sender, recipient, amount, transaction_date) VALUES (?, ?, ?, NOW())";
+            try (PreparedStatement pstmt = conn.prepareStatement(recordTransactionQuery)) {
+                // Transaction for the sender (recipient of the request)
+                pstmt.setString(1, username);
+                pstmt.setString(2, requesterName);
+                pstmt.setDouble(3, creditAmount);
+                pstmt.executeUpdate();
+
+                // Transaction for the recipient (requester)
+                pstmt.setString(1, requesterName);
+                pstmt.setString(2, username);
+                pstmt.setDouble(3, creditAmount);
                 pstmt.executeUpdate();
             }
 
@@ -457,13 +477,26 @@ public class Database {
     }
 
     public static double getAccountBalance(String username) {
-        String sql = "SELECT account_balance FROM users WHERE username = ?";
-        try (Connection conn = connect();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, username);
-            ResultSet rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return rs.getDouble("account_balance");
+        String sqlUser = "SELECT account_balance FROM users WHERE username = ?";
+        String sqlCompany = "SELECT account_balance FROM companies WHERE username = ?";
+
+        try (Connection conn = connect()) {
+            // Check users table
+            try (PreparedStatement pstmt = conn.prepareStatement(sqlUser)) {
+                pstmt.setString(1, username);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    return rs.getDouble("account_balance");
+                }
+            }
+
+            // Check companies table
+            try (PreparedStatement pstmt = conn.prepareStatement(sqlCompany)) {
+                pstmt.setString(1, username);
+                ResultSet rs = pstmt.executeQuery();
+                if (rs.next()) {
+                    return rs.getDouble("account_balance");
+                }
             }
         } catch (SQLException e) {
             e.printStackTrace();
