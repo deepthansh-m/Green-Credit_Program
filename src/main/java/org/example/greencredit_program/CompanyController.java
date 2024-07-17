@@ -16,9 +16,14 @@ public class CompanyController {
     private TextField creditAmountField;
 
     private String companyName;
+    private int companyId;
 
     public void setCompanyName(String companyName) {
         this.companyName = companyName;
+    }
+
+    public void setCompanyId(int companyId) {
+        this.companyId = companyId;
     }
 
     @FXML
@@ -35,9 +40,10 @@ public class CompanyController {
         if (selectedUser != null) {
             try {
                 int amount = Integer.parseInt(creditAmountField.getText());
-                boolean success = Database.requestCredits(companyName, selectedUser, amount);
+                boolean success = Database.requestCredits(companyId, companyName, selectedUser, amount);
                 if (success) {
                     showAlert("Request Sent", "Credit request sent to " + selectedUser);
+                    creditAmountField.clear();
                 } else {
                     showAlert("Request Failed", "There was an error sending the request. Please try again.");
                 }

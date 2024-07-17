@@ -1,6 +1,7 @@
 package org.example.greencredit_program;
 
 import javafx.fxml.FXML;
+import javafx.scene.Parent;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.stage.Stage;
@@ -68,6 +69,7 @@ public class LoginController {
             GreenController controller = fxmlLoader.getController();
             controller.setIsCompany(isCompany);
             controller.setUsername(usernameField.getText());
+            controller.initialize();
             stage.setScene(scene);
         } catch (IOException e) {
             e.printStackTrace();
@@ -81,6 +83,22 @@ public class LoginController {
             FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("create-user-view.fxml"));
             Scene scene = new Scene(fxmlLoader.load(), 400, 400);
             stage.setScene(scene);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    private void handleSuccessfulCompanyLogin(String companyName) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("company-view.fxml"));
+            Parent root = loader.load();
+
+            CompanyController companyController = loader.getController();
+            companyController.setCompanyName(companyName);
+
+            int companyId = Database.getUserId(companyName, true); // true for isCompany
+            companyController.setCompanyId(companyId);
+
+            // ... set up and show the new scene ...
         } catch (IOException e) {
             e.printStackTrace();
         }

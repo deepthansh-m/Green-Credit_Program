@@ -28,18 +28,14 @@ public class Database {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
-    public static boolean requestCredits(int userId, int creditAmount, String username, int amount) {
-        String companyName = getCompanyNameForUser(userId);
-
-        if (companyName == null || companyName.trim().isEmpty()) {
-            throw new IllegalStateException("User is not associated with a company");
-        }
-        String sql = "INSERT INTO credit_requests (company_name, credit_amount /* other fields */) VALUES (?, ? /* other placeholders */)";
-        try (PreparedStatement pstmt = connect().prepareStatement(sql)) {
-            pstmt.setString(1, companyName);
-            pstmt.setInt(2, creditAmount);
-            pstmt.setInt(3, amount);
-            pstmt.executeUpdate();
+    public static boolean requestCredits(int requesterId, String requesterName, String recipientUsername, int amount) {
+        String sql = "INSERT INTO credit_requests (requester_id, requester_name, recipient_username, amount) VALUES (?, ?, ?, ?)";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, requesterId);
+            pstmt.setString(2, requesterName);
+            pstmt.setString(3, recipientUsername);
+            pstmt.setInt(4, amount);
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
@@ -47,39 +43,27 @@ public class Database {
             return false;
         }
     }
-    private String getCompanyNameForUser(int userId) throws SQLException {
-        String sql = "SELECT company_name FROM users WHERE user_id = ?";
-        try (PreparedStatement pstmt = connect().prepareStatement(sql)) {
-            pstmt.setInt(1, userId);
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    return rs.getString("company_name");
-                }
-            }
-        }
-        return null;
-    }
 
     public static List<CreditRequest> getPendingCreditRequests(String username) {
         List<CreditRequest> requests = new ArrayList<>();
-        String query = "SELECT * FROM credit_requests WHERE username = ? AND status = 'PENDING'";
+        String sql = "SELECT * FROM credit_requests WHERE recipient_username = ? AND status = 'PENDING'";
         try (Connection conn = connect();
-             PreparedStatement pstmt = conn.prepareStatement(query)) {
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
             ResultSet rs = pstmt.executeQuery();
             while (rs.next()) {
                 requests.add(new CreditRequest(
                         rs.getInt("id"),
-                        rs.getString("company_name"),
+                        rs.getString("requester_name"),
                         rs.getInt("amount")
                 ));
             }
+            // Add this print statement for debugging
         } catch (SQLException e) {
             e.printStackTrace();
         }
         return requests;
     }
-
 
     public static boolean approveCreditRequest(int requestId, String username) {
         Connection conn = null;
@@ -88,9 +72,9 @@ public class Database {
             conn.setAutoCommit(false);
 
             // Get request details
-            String getRequestQuery = "SELECT company_name, amount FROM credit_requests WHERE id = ? AND username = ? AND status = 'PENDING'";
+            String getRequestQuery = "SELECT requester_name, amount FROM credit_requests WHERE id = ? AND recipient_username = ? AND status = 'PENDING'";
             int amount;
-            String companyName;
+            String requesterName;
             try (PreparedStatement pstmt = conn.prepareStatement(getRequestQuery)) {
                 pstmt.setInt(1, requestId);
                 pstmt.setString(2, username);
@@ -98,13 +82,13 @@ public class Database {
                 if (!rs.next()) {
                     throw new SQLException("Invalid request");
                 }
-                companyName = rs.getString("company_name");
+                requesterName = rs.getString("requester_name");
                 amount = rs.getInt("amount");
             }
 
-            // Update user's credits
-            String updateUserQuery = "UPDATE users SET credits = credits - ? WHERE username = ? AND credits >= ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(updateUserQuery)) {
+            // Update recipient's credits
+            String updateRecipientQuery = "UPDATE users SET credits = credits - ? WHERE username = ? AND credits >= ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(updateRecipientQuery)) {
                 pstmt.setInt(1, amount);
                 pstmt.setString(2, username);
                 pstmt.setInt(3, amount);
@@ -114,11 +98,11 @@ public class Database {
                 }
             }
 
-            // Update company's credits
-            String updateCompanyQuery = "UPDATE companies SET credits = credits + ? WHERE username = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(updateCompanyQuery)) {
+            // Update requester's credits
+            String updateRequesterQuery = "UPDATE users SET credits = credits + ? WHERE username = ?";
+            try (PreparedStatement pstmt = conn.prepareStatement(updateRequesterQuery)) {
                 pstmt.setInt(1, amount);
-                pstmt.setString(2, companyName);
+                pstmt.setString(2, requesterName);
                 pstmt.executeUpdate();
             }
 
@@ -150,6 +134,34 @@ public class Database {
                 }
             }
         }
+    }
+
+    public static int getUserId(String username, boolean isCompany) {
+        String table = isCompany ? "companies" : "users";
+        String sql = "SELECT id FROM " + table + " WHERE username = ?";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getInt("id");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+    private String getCompanyNameForUser(int userId) throws SQLException {
+        String sql = "SELECT company_name FROM users WHERE user_id = ?";
+        try (PreparedStatement pstmt = connect().prepareStatement(sql)) {
+            pstmt.setInt(1, userId);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString("company_name");
+                }
+            }
+        }
+        return null;
     }
 
     public static List<String> searchUsers(String searchTerm) {

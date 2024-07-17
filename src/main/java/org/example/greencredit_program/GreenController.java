@@ -115,16 +115,6 @@ public class GreenController {
     private String username;
     private File selectedFile;
 
-    public void setIsCompany(boolean isCompany) {
-        this.isCompany = isCompany;
-        // Load different data or functionalities based on the user type
-        if (isCompany) {
-            // Company-specific initializations
-        } else {
-            // User-specific initializations
-        }
-    }
-
     public void setUsername(String username) {
         this.username = username;
     }
@@ -147,7 +137,7 @@ public class GreenController {
 
 
     @FXML
-    private void initialize() {
+    void initialize() {
         Timeline timeline = new Timeline(
                 new KeyFrame(Duration.seconds(2), event -> updateDynamicLabel())
         );
@@ -168,7 +158,6 @@ public class GreenController {
                 success = true;
                 for (File file : event.getDragboard().getFiles()) {
                     selectedFile = file;
-                    System.out.println("Selected file: " + file.getPath());
                 }
             }
             event.setDropCompleted(success);
@@ -358,8 +347,18 @@ public class GreenController {
     public void setCompanyName(String companyName) {
         this.companyName = companyName;
     }
+    private int userId;
+
+    public void setUserId(int userId) {
+        this.userId = userId;
+    }
+
+    public void setIsCompany(boolean isCompany) {
+        this.isCompany = isCompany;
+    }
+
     @FXML
-    public void requestCredits(ActionEvent event){
+    public void requestCredits() {
         String selectedUser = searchResultsListView.getSelectionModel().getSelectedItem();
         if (selectedUser == null) {
             showAlert("No User Selected", "Please select a user to request credits from.");
@@ -373,15 +372,13 @@ public class GreenController {
         }
 
         try {
-            int userId = getCurrentUserId(); // Method to get the current user's ID
-            int creditAmount = getCreditAmountFromUI();
             int amount = Integer.parseInt(amountStr);
             if (amount <= 0) {
                 showAlert("Invalid Amount", "Please enter a positive credit amount.");
                 return;
             }
 
-            boolean success = Database.requestCredits(userId, creditAmount, selectedUser, amount);
+            boolean success = Database.requestCredits(userId, username, selectedUser, amount);
             if (success) {
                 showAlert("Request Sent", "Credit request sent to " + selectedUser);
                 creditAmountField.clear();
