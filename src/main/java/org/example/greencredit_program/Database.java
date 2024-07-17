@@ -28,14 +28,15 @@ public class Database {
         return DriverManager.getConnection(URL, USER, PASSWORD);
     }
 
-    public static boolean requestCredits(int requesterId, String requesterName, String recipientUsername, int amount) {
-        String sql = "INSERT INTO credit_requests (requester_id, requester_name, recipient_username, amount) VALUES (?, ?, ?, ?)";
+    public static boolean requestCredits(int requesterId, String requesterName, String recipientUsername, int creditAmount, double moneyAmount) {
+        String sql = "INSERT INTO credit_requests (requester_id, requester_name, recipient_username, amount, money_amount) VALUES (?, ?, ?, ?, ?)";
         try (Connection conn = connect();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setInt(1, requesterId);
             pstmt.setString(2, requesterName);
             pstmt.setString(3, recipientUsername);
-            pstmt.setInt(4, amount);
+            pstmt.setInt(4, creditAmount);
+            pstmt.setDouble(5, moneyAmount);
             int affectedRows = pstmt.executeUpdate();
             return affectedRows > 0;
         } catch (SQLException e) {
@@ -86,24 +87,43 @@ public class Database {
                 amount = rs.getInt("amount");
             }
 
-            // Update recipient's credits
+            // Update recipient's credits (check both users and companies tables)
             String updateRecipientQuery = "UPDATE users SET credits = credits - ? WHERE username = ? AND credits >= ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(updateRecipientQuery)) {
-                pstmt.setInt(1, amount);
-                pstmt.setString(2, username);
-                pstmt.setInt(3, amount);
-                int updatedRows = pstmt.executeUpdate();
-                if (updatedRows == 0) {
-                    throw new SQLException("Insufficient credits");
+            String updateRecipientCompanyQuery = "UPDATE companies SET credits = credits - ? WHERE username = ? AND credits >= ?";
+            boolean recipientUpdated = false;
+            for (String query : new String[]{updateRecipientQuery, updateRecipientCompanyQuery}) {
+                try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                    pstmt.setInt(1, amount);
+                    pstmt.setString(2, username);
+                    pstmt.setInt(3, amount);
+                    int updatedRows = pstmt.executeUpdate();
+                    if (updatedRows > 0) {
+                        recipientUpdated = true;
+                        break;
+                    }
                 }
             }
+            if (!recipientUpdated) {
+                throw new SQLException("Insufficient credits or recipient not found");
+            }
 
-            // Update requester's credits
+            // Update requester's credits (check both users and companies tables)
             String updateRequesterQuery = "UPDATE users SET credits = credits + ? WHERE username = ?";
-            try (PreparedStatement pstmt = conn.prepareStatement(updateRequesterQuery)) {
-                pstmt.setInt(1, amount);
-                pstmt.setString(2, requesterName);
-                pstmt.executeUpdate();
+            String updateRequesterCompanyQuery = "UPDATE companies SET credits = credits + ? WHERE username = ?";
+            boolean requesterUpdated = false;
+            for (String query : new String[]{updateRequesterQuery, updateRequesterCompanyQuery}) {
+                try (PreparedStatement pstmt = conn.prepareStatement(query)) {
+                    pstmt.setInt(1, amount);
+                    pstmt.setString(2, requesterName);
+                    int updatedRows = pstmt.executeUpdate();
+                    if (updatedRows > 0) {
+                        requesterUpdated = true;
+                        break;
+                    }
+                }
+            }
+            if (!requesterUpdated) {
+                throw new SQLException("Requester not found");
             }
 
             // Update request status
@@ -420,5 +440,34 @@ public class Database {
             e.printStackTrace();
         }
         return 0;
+    }
+
+    public static boolean addMoneyToAccount(String username, double amount) {
+        String sql = "UPDATE companies SET account_balance = account_balance + ? WHERE username = ?";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, amount);
+            pstmt.setString(2, username);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static double getAccountBalance(String username) {
+        String sql = "SELECT account_balance FROM users WHERE username = ?";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getDouble("account_balance");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0.0;
     }
 }

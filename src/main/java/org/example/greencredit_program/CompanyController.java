@@ -4,7 +4,7 @@ import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
-
+import javafx.scene.control.Label;
 import java.util.List;
 
 public class CompanyController {
@@ -14,9 +14,12 @@ public class CompanyController {
     private ListView<String> searchResultsListView;
     @FXML
     private TextField creditAmountField;
+    @FXML
+    private Label moneyAmountLabel;
 
     private String companyName;
     private int companyId;
+    private static final double DOLLARS_PER_CREDIT = 20.0;
 
     public void setCompanyName(String companyName) {
         this.companyName = companyName;
@@ -39,11 +42,14 @@ public class CompanyController {
         String selectedUser = searchResultsListView.getSelectionModel().getSelectedItem();
         if (selectedUser != null) {
             try {
-                int amount = Integer.parseInt(creditAmountField.getText());
-                boolean success = Database.requestCredits(companyId, companyName, selectedUser, amount);
+                int creditAmount = Integer.parseInt(creditAmountField.getText());
+                double moneyAmount = calculateMoneyAmount(creditAmount);
+
+                boolean success = Database.requestCredits(companyId, companyName, selectedUser, creditAmount, moneyAmount);
                 if (success) {
-                    showAlert("Request Sent", "Credit request sent to " + selectedUser);
+                    showAlert("Request Sent", String.format("Credit request sent to %s for %d credits ($%.2f)", selectedUser, creditAmount, moneyAmount));
                     creditAmountField.clear();
+                    moneyAmountLabel.setText("€0.00");
                 } else {
                     showAlert("Request Failed", "There was an error sending the request. Please try again.");
                 }
@@ -52,6 +58,21 @@ public class CompanyController {
             }
         } else {
             showAlert("No Selection", "Please select a user to request credits from.");
+        }
+    }
+
+    private double calculateMoneyAmount(int creditAmount) {
+        return creditAmount * DOLLARS_PER_CREDIT;
+    }
+
+    @FXML
+    public void updateMoneyAmount() {
+        try {
+            int creditAmount = Integer.parseInt(creditAmountField.getText().trim());
+            double moneyAmount = calculateMoneyAmount(creditAmount);
+            moneyAmountLabel.setText(String.format("€%.2f", moneyAmount));
+        } catch (NumberFormatException e) {
+            moneyAmountLabel.setText("€0.00");
         }
     }
 

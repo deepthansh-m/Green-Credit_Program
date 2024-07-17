@@ -16,7 +16,7 @@ public class GreenCreditProgram extends Application {
         String[] loginState = LoginController.loadLogin();
         if (loginState != null) {
             FXMLLoader fxmlLoader = new FXMLLoader(org.example.greencredit_program.GreenCreditProgram.class.getResource("main-view.fxml"));
-            Scene scene = new Scene(fxmlLoader.load(), 1320, 1240);
+            Scene scene = new Scene(fxmlLoader.load(), 1300, 1250);
             GreenController controller = fxmlLoader.getController();
             controller.setIsCompany(Boolean.parseBoolean(loginState[1]));
             stage.setScene(scene);

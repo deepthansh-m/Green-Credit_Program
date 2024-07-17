@@ -135,6 +135,19 @@ public class GreenController {
     @FXML
     private ListView<CreditRequest> creditRequestsListView;
 
+    @FXML
+    private TextField addMoneyField;
+    @FXML
+    private Label accountBalanceLabel;
+    @FXML
+    private Button addMoneyButton;
+
+    private double accountBalance = 0.0;
+
+    @FXML
+    private Label moneyAmountLabel;
+
+    private static final double DOLLARS_PER_CREDIT = 20.0;
 
     @FXML
     void initialize() {
@@ -169,6 +182,44 @@ public class GreenController {
         updateCreditBalance();
         if (!isCompany) {
             loadCreditRequests();
+        }
+        updateAccountBalanceDisplay();
+        addMoneyButton.setOnAction(event -> addMoneyToAccount());
+        accountBalance = Database.getAccountBalance(username);
+        updateAccountBalanceDisplay();
+        addMoneyButton.setOnAction(event -> addMoneyToAccount());
+    }
+
+    private void updateAccountBalanceDisplay() {
+        accountBalanceLabel.setText(String.format("Account Balance: $%.2f", accountBalance));
+    }
+
+    @FXML
+    private void addMoneyToAccount() {
+        String amountStr = addMoneyField.getText().trim();
+        if (amountStr.isEmpty()) {
+            showAlert("Invalid Amount", "Please enter an amount to add.");
+            return;
+        }
+
+        try {
+            double amount = Double.parseDouble(amountStr);
+            if (amount <= 0) {
+                showAlert("Invalid Amount", "Please enter a positive amount.");
+                return;
+            }
+
+            boolean success = Database.addMoneyToAccount(username, amount);
+            if (success) {
+                accountBalance += amount;
+                updateAccountBalanceDisplay();
+                addMoneyField.clear();
+                showAlert("Money Added", String.format("$%.2f has been added to your account.", amount));
+            } else {
+                showAlert("Transaction Failed", "There was an error adding money to your account. Please try again.");
+            }
+        } catch (NumberFormatException e) {
+            showAlert("Invalid Amount", "Please enter a valid number.");
         }
     }
 
@@ -222,7 +273,7 @@ public class GreenController {
         if (isVisible) {
             leftMenu.setPrefWidth(0);
         } else {
-            leftMenu.setPrefWidth(200);
+            leftMenu.setPrefWidth(350);
         }
     }
 
@@ -237,7 +288,7 @@ public class GreenController {
         profileView.setSpacing(10);
         profileView.getChildren().addAll(
                 new Label("Profile"),
-                new Label("User Name: John Doe"),
+                new Label("User Name:"),
                 new Label("Email: john.doe@example.com")
         );
         return profileView;
@@ -250,7 +301,7 @@ public class GreenController {
 
             Stage stage = (Stage) mainContent.getScene().getWindow();
             FXMLLoader fxmlLoader = new FXMLLoader(getClass().getResource("login-view.fxml"));
-            Scene scene = new Scene(fxmlLoader.load(), 600, 400);
+            Scene scene = new Scene(fxmlLoader.load(), 400, 400);
             stage.setScene(scene);
         } catch (IOException e) {
             e.printStackTrace();
@@ -372,21 +423,39 @@ public class GreenController {
         }
 
         try {
-            int amount = Integer.parseInt(amountStr);
-            if (amount <= 0) {
+            int creditAmount = Integer.parseInt(amountStr);
+            if (creditAmount <= 0) {
                 showAlert("Invalid Amount", "Please enter a positive credit amount.");
                 return;
             }
 
-            boolean success = Database.requestCredits(userId, username, selectedUser, amount);
+            double moneyAmount = calculateMoneyAmount(creditAmount);
+
+            boolean success = Database.requestCredits(userId, username, selectedUser, creditAmount, moneyAmount);
             if (success) {
-                showAlert("Request Sent", "Credit request sent to " + selectedUser);
+                showAlert("Request Sent", String.format("Credit request sent to %s for %d credits ($%.2f)", selectedUser, creditAmount, moneyAmount));
                 creditAmountField.clear();
+                moneyAmountLabel.setText("$0.00");
             } else {
                 showAlert("Request Failed", "There was an error sending the request. Please try again.");
             }
         } catch (NumberFormatException e) {
             showAlert("Invalid Amount", "Please enter a valid number for the credit amount.");
+        }
+    }
+
+    private double calculateMoneyAmount(int creditAmount) {
+        return creditAmount * DOLLARS_PER_CREDIT;
+    }
+
+    @FXML
+    public void updateMoneyAmount() {
+        try {
+            int creditAmount = Integer.parseInt(creditAmountField.getText().trim());
+            double moneyAmount = calculateMoneyAmount(creditAmount);
+            moneyAmountLabel.setText(String.format("$%.2f", moneyAmount));
+        } catch (NumberFormatException e) {
+            moneyAmountLabel.setText("$0.00");
         }
     }
 
