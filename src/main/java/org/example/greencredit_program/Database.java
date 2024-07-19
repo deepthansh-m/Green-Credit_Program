@@ -11,7 +11,7 @@ import java.util.List;
 public class Database {
     private static final String URL = "jdbc:mysql://127.0.0.1:3306/green_credit_db";
     private static final String USER = "root"; // Change to your database user
-    private static final String PASSWORD = "Mani@2003"; // Change to your database password
+    private static final String PASSWORD = "Dimpu@2004"; // Change to your database password
 
     static {
         try {
@@ -21,7 +21,7 @@ public class Database {
         }
         // Set trust store properties
         System.setProperty("javax.net.ssl.trustStore", "/path/to/truststore.jks");
-        System.setProperty("javax.net.ssl.trustStorePassword", "Mani@2003");
+        System.setProperty("javax.net.ssl.trustStorePassword", "Dimpu@2004");
     }
 
     public static Connection connect() throws SQLException {
@@ -29,58 +29,19 @@ public class Database {
     }
 
     public static boolean requestCredits(int requesterId, String requesterName, String recipientUsername, int creditAmount, double moneyAmount) {
-        Connection conn = null;
-        try {
-            conn = connect();
-            conn.setAutoCommit(false);
-
-            // Check if requester has enough account balance
-            String checkBalanceQuery = "SELECT account_balance FROM users WHERE id = ?";
-            double accountBalance;
-            try (PreparedStatement pstmt = conn.prepareStatement(checkBalanceQuery)) {
-                pstmt.setInt(1, requesterId);
-                ResultSet rs = pstmt.executeQuery();
-                if (!rs.next()) {
-                    throw new SQLException("Requester not found");
-                }
-                accountBalance = rs.getDouble("account_balance");
-            }
-
-            if (accountBalance < moneyAmount) {
-                throw new SQLException("Insufficient account balance");
-            }
-
-            // Insert credit request
-            String insertRequestQuery = "INSERT INTO credit_requests (requester_id, requester_name, recipient_username, amount, money_amount, status) VALUES (?, ?, ?, ?, ?, 'PENDING')";
-            try (PreparedStatement pstmt = conn.prepareStatement(insertRequestQuery)) {
-                pstmt.setInt(1, requesterId);
-                pstmt.setString(2, requesterName);
-                pstmt.setString(3, recipientUsername);
-                pstmt.setInt(4, creditAmount);
-                pstmt.setDouble(5, moneyAmount);
-                pstmt.executeUpdate();
-            }
-
-            conn.commit();
-            return true;
+        String sql = "INSERT INTO credit_requests (requester_id, requester_name, recipient_username, amount, money_amount) VALUES (?, ?, ?, ?, ?)";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, requesterId);
+            pstmt.setString(2, requesterName);
+            pstmt.setString(3, recipientUsername);
+            pstmt.setInt(4, creditAmount);
+            pstmt.setDouble(5, moneyAmount);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
         } catch (SQLException e) {
             e.printStackTrace();
-            if (conn != null) {
-                try {
-                    conn.rollback();
-                } catch (SQLException ex) {
-                    ex.printStackTrace();
-                }
-            }
             return false;
-        } finally {
-            if (conn != null) {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                    e.printStackTrace();
-                }
-            }
         }
     }
 
