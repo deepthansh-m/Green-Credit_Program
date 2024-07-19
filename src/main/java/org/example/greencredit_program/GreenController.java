@@ -434,12 +434,23 @@ public class GreenController {
             }
 
             double moneyAmount = calculateMoneyAmount(creditAmount);
+            double accountBalance = Database.getAccountBalance(username);
+
+            if (accountBalance < moneyAmount) {
+                showAlert("Insufficient Balance",
+                        String.format("You don't have enough balance to request this amount. Required: $%.2f, Available: $%.2f",
+                                moneyAmount, accountBalance));
+                return;
+            }
 
             boolean success = Database.requestCredits(userId, username, selectedUser, creditAmount, moneyAmount);
             if (success) {
-                showAlert("Request Sent", String.format("Credit request sent to %s for %d credits ($%.2f)", selectedUser, creditAmount, moneyAmount));
+                showAlert("Request Sent",
+                        String.format("Credit request sent to %s for %d credits ($%.2f)",
+                                selectedUser, creditAmount, moneyAmount));
                 creditAmountField.clear();
                 moneyAmountLabel.setText("$0.00");
+                updateAccountBalanceDisplay();
             } else {
                 showAlert("Request Failed", "There was an error sending the request. Please try again.");
             }
@@ -480,11 +491,17 @@ public class GreenController {
             boolean success = Database.approveCreditRequest(selectedRequest.getId(), username);
             if (success) {
                 showAlert("Request Approved", "You've transferred " + selectedRequest.getAmount() + " credits to " + selectedRequest.getCompanyName());
-                updateCreditBalanceDisplay(); // Update the credit balance display
-                updateAccountBalanceDisplay(); // Update the account balance display
-                loadCreditRequests(); // Refresh the credit requests list
+                updateCreditBalanceDisplay();
+                updateAccountBalanceDisplay();
+                loadCreditRequests();
             } else {
-                showAlert("Approval Failed", "There was an error approving the request. Please try again.");
+                double accountBalance = Database.getAccountBalance(username);
+                double requiredAmount = selectedRequest.getAmount() * DOLLARS_PER_CREDIT;
+                if (accountBalance < requiredAmount) {
+                    showAlert("Approval Failed", "You don't have enough balance to approve this request. Required: $" + String.format("%.2f", requiredAmount) + ", Available: $" + String.format("%.2f", accountBalance));
+                } else {
+                    showAlert("Approval Failed", "There was an error approving the request. Please try again.");
+                }
             }
         }
     }
