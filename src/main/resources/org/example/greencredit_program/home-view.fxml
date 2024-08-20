@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox fx:id="profileView" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="org.example.greencredit_program.homeController" spacing="10" style="-fx-padding: 20;">
+    <HBox spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 10;">
+        <TextField promptText="Start a post" style="-fx-background-color: #eef3f8; -fx-background-radius: 15; -fx-padding: 10;" HBox.hgrow="ALWAYS" />
+        <Button onAction="#showDragAndDropArea" style="-fx-background-color: transparent;" text="Photo" />
+        <Button onAction="#showDragAndDropArea" style="-fx-background-color: transparent;" text="Video" />
+        <Button style="-fx-background-color: transparent;" text="Event" />
+        <Button style="-fx-background-color: transparent;" text="Write article" />
+    </HBox>
+    <VBox fx:id="dragAndDropArea" alignment="CENTER" style="-fx-background-color: #eef3f8; -fx-border-color: #d1d1d1; -fx-border-style: dashed; -fx-border-width: 2; -fx-padding: 20; -fx-background-radius: 15;" visible="false">
+        <Label text="Drag and drop files here or" />
+        <Button onAction="#selectFile" style="-fx-background-color: #466D1D; -fx-text-fill: white; -fx-margin: 10 0 0 0;" text="Choose from documents" />
+        <Button onAction="#uploadFile" style="-fx-background-color: #466D1D; -fx-text-fill: white; -fx-margin: 10 0 0 0;" text="Upload" />
+    </VBox>
+    <ListView fx:id="feedListView" style="-fx-background-color: transparent;" VBox.vgrow="ALWAYS" />
+</VBox>

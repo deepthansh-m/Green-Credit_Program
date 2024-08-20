@@ -57,58 +57,48 @@ public class GreenController {
     private TextField creditAmountField;
 
     @FXML
-    private void showTransactionsView() {
-        Node transactionsView = loadTransactionsView();
-        mainContent.getChildren().setAll(transactionsView);
-    }
-
-    private Node loadTransactionsView() {
-        VBox transactionsView = new VBox(10);
-        transactionsView.setPadding(new Insets(20));
-
-        Label titleLabel = new Label("Transactions");
-        titleLabel.setStyle("-fx-font-size: 24; -fx-font-weight: bold;");
-
-        TextField amountField = new TextField();
-        amountField.setPromptText("Enter amount");
-
-        TextField recipientField = new TextField();
-        recipientField.setPromptText("Enter recipient username");
-
-        Button transactButton = new Button("Transact");
-        transactButton.setOnAction(e -> performTransaction(amountField.getText(), recipientField.getText()));
-
-        ListView<String> transactionHistoryList = new ListView<>();
-        transactionHistoryList.setPrefHeight(200);
-
-        transactionsView.getChildren().addAll(titleLabel, amountField, recipientField, transactButton, new Label("Transaction History:"), transactionHistoryList);
-
-        // Load transaction history
-        loadTransactionHistory(transactionHistoryList);
-
-        return transactionsView;
-    }
-
-    private void performTransaction(String amountStr, String recipient) {
+    private void showProfileView() {
         try {
-            double amount = Double.parseDouble(amountStr);
-            boolean success = Database.performTransaction(username, recipient, amount, isCompany);
-            if (success) {
-                System.out.println("Transaction successful");
-                // Refresh transaction history
-                loadTransactionHistory((ListView<String>) ((VBox) mainContent.getChildren().get(0)).getChildren().get(5));
-            } else {
-                System.out.println("Transaction failed");
-            }
-        } catch (NumberFormatException e) {
-            System.out.println("Invalid amount entered");
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("profile-view.fxml"));
+            Node profileView = loader.load();
+            ProfileController profileController = loader.getController();
+            profileController.setUsername(username);
+            profileController.setIsCompany(isCompany);
+            profileController.initialize();
+            mainContent.getChildren().setAll(profileView);
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
 
-    private void loadTransactionHistory(ListView<String> listView) {
-        List<String> history = Database.getTransactionHistory(username, isCompany);
-        listView.getItems().clear();
-        listView.getItems().addAll(history);
+    @FXML
+    private void showTransactionsView() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("transaction-view.fxml"));
+            Node transactionsView = loader.load();
+            TransactionController transactionController = loader.getController();
+            transactionController.setUsername(username);
+            transactionController.setIsCompany(isCompany);
+            transactionController.initialize();
+            mainContent.getChildren().setAll(transactionsView);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @FXML
+    private void showHomeView() {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("home-view.fxml"));
+            Node homeView = loader.load();
+            homeController homeController = loader.getController();
+            homeController.setUsername(username);
+            homeController.setIsCompany(isCompany);
+            homeController.initialize();
+            mainContent.getChildren().setAll(homeView);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     private boolean isCompany;
@@ -151,6 +141,15 @@ public class GreenController {
     int j = 1;
 
     @FXML
+    private Label usernameDisplay;
+
+    private void displayUsername() {
+        if (usernameDisplay != null && username != null) {
+            usernameDisplay.setText("Welcome, " + username);
+        }
+    }
+
+    @FXML
     void initialize() {
         if (j==1) {
             Timeline timeline = new Timeline(
@@ -191,6 +190,8 @@ public class GreenController {
         accountBalance = Database.getAccountBalance(username);
         updateAccountBalanceDisplay();
         addMoneyButton.setOnAction(event -> addMoneyToAccount());
+
+        displayUsername();
     }
 
     @FXML
@@ -274,23 +275,6 @@ public class GreenController {
         } else {
             leftMenu.setPrefWidth(400);
         }
-    }
-
-    @FXML
-    private void showProfileView() {
-        Node profileView = loadProfileView();
-        mainContent.getChildren().setAll(profileView);
-    }
-
-    private Node loadProfileView() {
-        VBox profileView = new VBox();
-        profileView.setSpacing(10);
-        profileView.getChildren().addAll(
-                new Label("Profile"),
-                new Label("User Name:"),
-                new Label("Email: john.doe@example.com")
-        );
-        return profileView;
     }
 
     @FXML
@@ -379,21 +363,21 @@ public class GreenController {
         String searchTerm = searchField2.getText().trim();
 
         if (searchTerm.isEmpty()) {
-            // Clear the list view if the search term is empty
             searchResultsListView.getItems().clear();
             return;
         }
 
-        // Call the database method to search for users
         List<String> users = Database.searchUsers(searchTerm);
 
-        // Update the ListView with the search results
         searchResultsListView.getItems().clear();
-        searchResultsListView.getItems().addAll(users);
 
         if (users.isEmpty()) {
-            // If no users found, add a message to the ListView
             searchResultsListView.getItems().add("No users found");
+        } else {
+            for (String user : users) {
+                int credits = Database.getUserCredits(user, false); // Assuming false for non-company users
+                searchResultsListView.getItems().add(user + " - Credits: " + credits);
+            }
         }
     }
 
@@ -414,11 +398,12 @@ public class GreenController {
 
     @FXML
     public void requestCredits() {
-        String selectedUser = searchResultsListView.getSelectionModel().getSelectedItem();
-        if (selectedUser == null) {
+        String selectedItem = searchResultsListView.getSelectionModel().getSelectedItem();
+        if (selectedItem == null) {
             showAlert("No User Selected", "Please select a user to request credits from.");
             return;
         }
+        String selectedUser = selectedItem.split(" - ")[0];
 
         String amountStr = creditAmountField.getText().trim();
         if (amountStr.isEmpty()) {

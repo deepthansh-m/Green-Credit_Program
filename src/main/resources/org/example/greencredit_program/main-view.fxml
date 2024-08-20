@@ -14,8 +14,9 @@
     <top>
         <HBox alignment="CENTER_LEFT" spacing="20" style="-fx-background-color: #466D1D; -fx-padding: 15;">
             <Label style="-fx-font-size: 28; -fx-text-fill: white; -fx-font-weight: bold;" text="GCP" />
+            <Label fx:id="usernameDisplay" style="-fx-font-size: 18; -fx-text-fill: white;" />
             <TextField fx:id="searchField" promptText="Search" style="-fx-background-color: white; -fx-background-radius: 15; -fx-pref-width: 250;" />
-            <Button style="-fx-background-color: transparent; -fx-text-fill: white;" text="Home" />
+            <Button style="-fx-background-color: transparent; -fx-text-fill: white;" text="Home" onAction="#showHomeView"/>
             <Button style="-fx-background-color: transparent; -fx-text-fill: white;" text="My Green Credits" />
             <Button style="-fx-background-color: transparent; -fx-text-fill: white;" text="Company's" />
             <Button style="-fx-background-color: transparent; -fx-text-fill: white;" text="Messaging" />
@@ -28,10 +29,6 @@
     <left>
         <VBox fx:id="leftMenu" spacing="20" style="-fx-padding: 15; -fx-background-color: #f3f2ef; -fx-pref-width: 400;">
             <Button alignment="TOP_LEFT" mnemonicParsing="false" onAction="#showProfileView" prefWidth="220.0" style="-fx-background-color: transparent; -fx-font-size: 18;" text="Profile" />
-            <VBox spacing="5" style="-fx-background-color: white; -fx-padding: 10; -fx-background-radius: 5;">
-                <Label style="-fx-font-size: 18; -fx-font-weight: bold;" text="User Name" />
-                <Label style="-fx-font-size: 14; -fx-text-fill: grey;" text="Headline" />
-            </VBox>
             <VBox fx:id="creditRequestsBox" spacing="10" style="-fx-background-color: white; -fx-padding: 10; -fx-background-radius: 5;">
                 <Label style="-fx-font-weight: bold;" text="Pending Credit Requests:" />
                 <ListView fx:id="creditRequestsListView" prefHeight="100" />

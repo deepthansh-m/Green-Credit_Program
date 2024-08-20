@@ -503,4 +503,35 @@ public class Database {
         }
         return 0.0;
     }
+
+    public static boolean updateUserEmail(String username, String email, boolean isCompany) {
+        String table = isCompany ? "companies" : "users";
+        String sql = "UPDATE " + table + " SET email = ? WHERE username = ?";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, email);
+            pstmt.setString(2, username);
+            int affectedRows = pstmt.executeUpdate();
+            return affectedRows > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static String getUserEmail(String username, boolean isCompany) {
+        String table = isCompany ? "companies" : "users";
+        String sql = "SELECT email FROM " + table + " WHERE username = ?";
+        try (Connection conn = connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            ResultSet rs = pstmt.executeQuery();
+            if (rs.next()) {
+                return rs.getString("email");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
 }

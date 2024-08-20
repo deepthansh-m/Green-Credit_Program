@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox fx:id="profileView" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="org.example.greencredit_program.ProfileController" spacing="10" style="-fx-padding: 20;">
+    <Label style="-fx-font-size: 24; -fx-font-weight: bold;" text="Profile"/>
+    <Label fx:id="usernameLabel" text="Username: "/>
+    <Label fx:id="emailLabel" text="Email: "/>
+    <Label fx:id="creditBalanceLabel" text="Credit Balance: "/>
+    <Label fx:id="accountBalanceLabel" text="Account Balance: "/>
+    <Label fx:id="isCompanyLabel" text="Account Type: "/>
+    <Button text="Edit Email" onAction="#editEmail"/>
+</VBox>

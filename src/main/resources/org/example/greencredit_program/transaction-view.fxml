@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml" fx:controller="org.example.greencredit_program.TransactionController" spacing="10" style="-fx-padding: 20;">
+    <Label style="-fx-font-size: 24; -fx-font-weight: bold;" text="Transactions"/>
+    <VBox spacing="10">
+        <TextField fx:id="recipientField" promptText="Enter recipient username"/>
+        <TextField fx:id="amountField" promptText="Enter amount"/>
+        <Button text="Transact" onAction="#performTransaction"/>
+    </VBox>
+    <Label text="Transaction History:"/>
+    <ScrollPane fitToWidth="true" prefHeight="200">
+        <ListView fx:id="transactionHistoryList" VBox.vgrow="ALWAYS"/>
+    </ScrollPane>
+</VBox>
